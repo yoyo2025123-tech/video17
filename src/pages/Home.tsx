@@ -6,7 +6,7 @@ import { MovieCard } from '../components/MovieCard';
 import { HeroCarousel } from '../components/HeroCarousel';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
-import NovelasModal from '../components/NovelasModal';
+import { NovelasModal } from '../components/NovelasModal';
 import type { Movie, TVShow } from '../types/movie';
 
 type TrendingTimeWindow = 'day' | 'week';

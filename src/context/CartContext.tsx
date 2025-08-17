@@ -210,6 +210,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const seriesPrice = adminConfig.pricing?.seriesPrice || 300;
     const transferFeePercentage = adminConfig.pricing?.transferFeePercentage || 10;
     
+    // Verificar si es una novela (tiene propiedades especiales)
+    if ((item as any).isNovela) {
+      const novelaItem = item as any;
+      return item.paymentType === 'transfer' ? novelaItem.transferPrice : novelaItem.cashPrice;
+    }
+    
     const isAnime = item.original_language === 'ja' || 
                    (item.genre_ids && item.genre_ids.includes(16)) ||
                    item.title?.toLowerCase().includes('anime');

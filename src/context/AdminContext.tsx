@@ -89,7 +89,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
 
   const login = (username: string, password: string): boolean => {
     // Credenciales de administrador
-    if (username === 'admin' && password === 'admin123') {
+    if (username.toLowerCase() === 'admin' && password === 'admin123') {
       dispatch({ type: 'LOG_IN' });
       return true;
     }
