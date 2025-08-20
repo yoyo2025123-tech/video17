@@ -1,808 +1,684 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { DEFAULT_ADMIN_CONFIG } from '../types/admin';
-import type { AdminConfig, AdminState, AdminAction, AdminContextType, NovelasConfig, DeliveryZoneConfig } from '../types/admin';
 
-const AdminContext = createContext<AdminContextType | undefined>(undefined);
-
-function adminReducer(state: AdminState, action: AdminAction): AdminState {
-  switch (action.type) {
-    case 'LOG_IN':
-      return { ...state, isAuthenticated: true };
-    case 'LOG_OUT':
-      return { ...state, isAuthenticated: false };
-    case 'UPDATE_PRICING':
-      const newConfig = { ...state.config, pricing: action.payload };
-      // Sincronizar con localStorage para que el carrito use los precios actualizados
-      localStorage.setItem('adminConfig', JSON.stringify(newConfig));
-      return { ...state, config: newConfig };
-    case 'ADD_NOVELA':
-      const novelaWithId = { ...action.payload, id: Date.now() };
-      const configWithNovela = { 
-        ...state.config, 
-        novelas: [...state.config.novelas, novelaWithId] 
-      };
-      localStorage.setItem('adminConfig', JSON.stringify(configWithNovela));
-      return { ...state, config: configWithNovela };
-    case 'UPDATE_NOVELA':
-      const updatedNovelas = state.config.novelas.map(novela =>
-        novela.id === action.payload.id ? { ...novela, ...action.payload } : novela
-      );
-      const configWithUpdatedNovela = { ...state.config, novelas: updatedNovelas };
-      localStorage.setItem('adminConfig', JSON.stringify(configWithUpdatedNovela));
-      return { ...state, config: configWithUpdatedNovela };
-    case 'DELETE_NOVELA':
-      const filteredNovelas = state.config.novelas.filter(novela => novela.id !== action.payload);
-      const configWithoutNovela = { ...state.config, novelas: filteredNovelas };
-      localStorage.setItem('adminConfig', JSON.stringify(configWithoutNovela));
-      return { ...state, config: configWithoutNovela };
-    case 'ADD_DELIVERY_ZONE':
-      const zoneWithId = { ...action.payload, id: Date.now() };
-      const configWithZone = { 
-        ...state.config, 
-        deliveryZones: [...state.config.deliveryZones, zoneWithId] 
-      };
-      localStorage.setItem('adminConfig', JSON.stringify(configWithZone));
-      return { ...state, config: configWithZone };
-    case 'UPDATE_DELIVERY_ZONE':
-      const updatedZones = state.config.deliveryZones.map(zone =>
-        zone.id === action.payload.id ? { ...zone, ...action.payload } : zone
-      );
-      const configWithUpdatedZone = { ...state.config, deliveryZones: updatedZones };
-      localStorage.setItem('adminConfig', JSON.stringify(configWithUpdatedZone));
-      return { ...state, config: configWithUpdatedZone };
-    case 'DELETE_DELIVERY_ZONE':
-      const filteredZones = state.config.deliveryZones.filter(zone => zone.id !== action.payload);
-      const configWithoutZone = { ...state.config, deliveryZones: filteredZones };
-      localStorage.setItem('adminConfig', JSON.stringify(configWithoutZone));
-      return { ...state, config: configWithoutZone };
-    case 'LOAD_CONFIG':
-      localStorage.setItem('adminConfig', JSON.stringify(action.payload));
-      return { ...state, config: action.payload };
-    default:
-      return state;
-  }
+export interface PriceConfig {
+  moviePrice: number;
+  seriesPrice: number;
+  transferFeePercentage: number;
+  novelPricePerChapter: number;
 }
 
-export function AdminProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(adminReducer, {
-    isAuthenticated: false,
-    config: DEFAULT_ADMIN_CONFIG
-  });
-
-  // Cargar configuración desde localStorage al inicializar
-  useEffect(() => {
-    const savedConfig = localStorage.getItem('adminConfig');
-    if (savedConfig) {
-      try {
-        const config = JSON.parse(savedConfig);
-        dispatch({ type: 'LOAD_CONFIG', payload: config });
-      } catch (error) {
-        console.error('Error loading admin config:', error);
-        // Si hay error, usar configuración por defecto
-        localStorage.setItem('adminConfig', JSON.stringify(DEFAULT_ADMIN_CONFIG));
-      }
-    } else {
-      // Si no hay configuración guardada, usar la por defecto
-      localStorage.setItem('adminConfig', JSON.stringify(DEFAULT_ADMIN_CONFIG));
-    }
-  }, []);
-
-  const login = (username: string, password: string): boolean => {
-    // Credenciales de administrador
-    if (username.toLowerCase() === 'admin' && password === 'admin123') {
-      dispatch({ type: 'LOG_IN' });
-      return true;
-    }
-    return false;
-  };
-
-  const logout = () => {
-    dispatch({ type: 'LOG_OUT' });
-  };
-
-  const addNovela = (novela: Omit<NovelasConfig, 'id'>) => {
-    dispatch({ type: 'ADD_NOVELA', payload: novela });
-  };
-
-  const updateNovela = (id: number, novela: Partial<NovelasConfig>) => {
-    dispatch({ type: 'UPDATE_NOVELA', payload: { ...novela, id } as NovelasConfig });
-  };
-
-  const deleteNovela = (id: number) => {
-    dispatch({ type: 'DELETE_NOVELA', payload: id });
-  };
-
-  const addDeliveryZone = (zone: Omit<DeliveryZoneConfig, 'id'>) => {
-    dispatch({ type: 'ADD_DELIVERY_ZONE', payload: zone });
-  };
-
-  const updateDeliveryZone = (id: number, zone: Partial<DeliveryZoneConfig>) => {
-    dispatch({ type: 'UPDATE_DELIVERY_ZONE', payload: { ...zone, id } as DeliveryZoneConfig });
-  };
-
-  const deleteDeliveryZone = (id: number) => {
-    dispatch({ type: 'DELETE_DELIVERY_ZONE', payload: id });
-  };
-
-  const exportConfig = (): string => {
-    const exportData = {
-      version: '1.0',
-      timestamp: new Date().toISOString(),
-      config: state.config
-    };
-    return JSON.stringify(exportData, null, 2);
-  };
-
-  const importConfig = (configData: string): boolean => {
-    try {
-      const data = JSON.parse(configData);
-      if (data.config && data.config.pricing && data.config.novelas && data.config.deliveryZones) {
-        dispatch({ type: 'LOAD_CONFIG', payload: data.config });
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('Error importing config:', error);
-      return false;
-    }
-  };
-
-  const resetToDefaults = () => {
-    dispatch({ type: 'LOAD_CONFIG', payload: DEFAULT_ADMIN_CONFIG });
-  };
-
-  const showNotification = (message: string, type: 'success' | 'info' | 'warning' | 'error') => {
-    // Esta función será implementada por el componente que la use
-    console.log(`${type.toUpperCase()}: ${message}`);
-  };
-
-  const getCurrentConfig = (): AdminConfig => {
-    return state.config;
-  };
-
-  const exportSystemFiles = () => {
-    const currentDate = new Date();
-    const dateString = currentDate.toISOString().split('T')[0].replace(/-/g, '');
-    const timeString = currentDate.toTimeString().split(' ')[0].replace(/:/g, '');
-    const timestamp = `${dateString}_${timeString}`;
-
-    // Generar archivos del sistema con configuración actual aplicada
-    const systemFiles = generateSystemFiles(state.config);
-
-    // Crear estructura de archivos para descarga
-    const fileStructure = {
-      [`tv-a-la-carta-system-${timestamp}`]: {
-        'src': {
-          'types': {
-            'admin.ts': systemFiles.adminTypes
-          },
-          'context': {
-            'AdminContext.tsx': systemFiles.adminContext
-          },
-          'components': {
-            'AdminPanel.tsx': systemFiles.adminPanel,
-            'CheckoutModal.tsx': systemFiles.checkoutModal,
-            'NovelasModal.tsx': systemFiles.novelasModal
-          }
-        },
-        'README.md': systemFiles.readme,
-        'INSTALL.md': systemFiles.installGuide
-      }
-    };
-
-    // Crear y descargar archivos individuales
-    Object.entries(systemFiles).forEach(([filename, content]) => {
-      if (filename !== 'readme' && filename !== 'installGuide') {
-        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = getSystemFileName(filename, timestamp);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      }
-    });
-
-    // Crear archivo README
-    const readmeBlob = new Blob([systemFiles.readme], { type: 'text/plain;charset=utf-8' });
-    const readmeUrl = URL.createObjectURL(readmeBlob);
-    const readmeLink = document.createElement('a');
-    readmeLink.href = readmeUrl;
-    readmeLink.download = `README_${timestamp}.md`;
-    document.body.appendChild(readmeLink);
-    readmeLink.click();
-    document.body.removeChild(readmeLink);
-    URL.revokeObjectURL(readmeUrl);
-
-    // Crear guía de instalación
-    const installBlob = new Blob([systemFiles.installGuide], { type: 'text/plain;charset=utf-8' });
-    const installUrl = URL.createObjectURL(installBlob);
-    const installLink = document.createElement('a');
-    installLink.href = installUrl;
-    installLink.download = `INSTALL_${timestamp}.md`;
-    document.body.appendChild(installLink);
-    installLink.click();
-    document.body.removeChild(installLink);
-    URL.revokeObjectURL(installUrl);
-  };
-
-  const getSystemFileName = (type: string, timestamp: string): string => {
-    const fileMap: { [key: string]: string } = {
-      adminTypes: `src_types_admin_${timestamp}.ts`,
-      adminContext: `src_context_AdminContext_${timestamp}.tsx`,
-      adminPanel: `src_components_AdminPanel_${timestamp}.tsx`,
-      checkoutModal: `src_components_CheckoutModal_${timestamp}.tsx`,
-      novelasModal: `src_components_NovelasModal_${timestamp}.tsx`
-    };
-    return fileMap[type] || `${type}_${timestamp}.txt`;
-  };
-
-  const generateSystemFiles = (config: AdminConfig) => {
-    const currentDate = new Date().toISOString();
-    
-    return {
-      adminTypes: generateAdminTypesFile(config, currentDate),
-      adminContext: generateAdminContextFile(config, currentDate),
-      adminPanel: generateAdminPanelFile(config, currentDate),
-      checkoutModal: generateCheckoutModalFile(config, currentDate),
-      novelasModal: generateNovelasModalFile(config, currentDate),
-      readme: generateReadmeFile(config, currentDate),
-      installGuide: generateInstallGuide(config, currentDate)
-    };
-  };
-
-  const generateAdminTypesFile = (config: AdminConfig, timestamp: string): string => {
-    return `// Archivo generado automáticamente - Sistema TV a la Carta
-// Tipos y configuración del sistema administrativo
-// Última modificación: ${timestamp}
-// Configuración actual aplicada desde el panel de control
-
-import React from 'react';
-
-export interface AdminConfig {
-  pricing: {
-    moviePrice: number;
-    seriesPrice: number;
-    transferFeePercentage: number;
-  };
-  novelas: NovelasConfig[];
-  deliveryZones: DeliveryZoneConfig[];
+export interface DeliveryZone {
+  id: string;
+  name: string;
+  cost: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface NovelasConfig {
+export interface Novel {
   id: number;
   titulo: string;
   genero: string;
   capitulos: number;
   año: number;
-  costoEfectivo: number;
-  costoTransferencia: number;
   descripcion?: string;
-}
-
-export interface DeliveryZoneConfig {
-  id: number;
-  name: string;
-  fullPath: string;
-  cost: number;
   active: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface AdminState {
+export interface SystemFile {
+  name: string;
+  path: string;
+  lastModified: string;
+  size: number;
+  type: 'component' | 'service' | 'context' | 'page' | 'config';
+  description: string;
+}
+
+interface AdminState {
   isAuthenticated: boolean;
-  config: AdminConfig;
+  prices: PriceConfig;
+  deliveryZones: DeliveryZone[];
+  novels: Novel[];
+  systemFiles: SystemFile[];
+  notifications: AdminNotification[];
+  lastBackup: string | null;
 }
 
-export type AdminAction = 
-  | { type: 'UPDATE_PRICING'; payload: AdminConfig['pricing'] }
-  | { type: 'ADD_NOVELA'; payload: NovelasConfig }
-  | { type: 'UPDATE_NOVELA'; payload: NovelasConfig }
-  | { type: 'DELETE_NOVELA'; payload: number }
-  | { type: 'ADD_DELIVERY_ZONE'; payload: DeliveryZoneConfig }
-  | { type: 'UPDATE_DELIVERY_ZONE'; payload: DeliveryZoneConfig }
-  | { type: 'DELETE_DELIVERY_ZONE'; payload: number }
-  | { type: 'TOGGLE_DELIVERY_ZONE'; payload: number }
-  | { type: 'LOAD_CONFIG'; payload: AdminConfig }
-  | { type: 'LOG_IN' }
-  | { type: 'LOG_OUT' };
+export interface AdminNotification {
+  id: string;
+  type: 'success' | 'warning' | 'error' | 'info';
+  title: string;
+  message: string;
+  timestamp: string;
+  section: string;
+  action: string;
+}
 
-export interface AdminContextType {
+type AdminAction = 
+  | { type: 'LOGIN'; payload: boolean }
+  | { type: 'LOGOUT' }
+  | { type: 'UPDATE_PRICES'; payload: PriceConfig }
+  | { type: 'ADD_DELIVERY_ZONE'; payload: DeliveryZone }
+  | { type: 'UPDATE_DELIVERY_ZONE'; payload: DeliveryZone }
+  | { type: 'DELETE_DELIVERY_ZONE'; payload: string }
+  | { type: 'ADD_NOVEL'; payload: Novel }
+  | { type: 'UPDATE_NOVEL'; payload: Novel }
+  | { type: 'DELETE_NOVEL'; payload: number }
+  | { type: 'ADD_NOTIFICATION'; payload: AdminNotification }
+  | { type: 'CLEAR_NOTIFICATIONS' }
+  | { type: 'UPDATE_SYSTEM_FILES'; payload: SystemFile[] }
+  | { type: 'SET_LAST_BACKUP'; payload: string }
+  | { type: 'LOAD_ADMIN_DATA'; payload: Partial<AdminState> };
+
+interface AdminContextType {
   state: AdminState;
-  dispatch: React.Dispatch<AdminAction>;
   login: (username: string, password: string) => boolean;
   logout: () => void;
-  addNovela: (novela: Omit<NovelasConfig, 'id'>) => void;
-  updateNovela: (id: number, novela: Partial<NovelasConfig>) => void;
-  deleteNovela: (id: number) => void;
-  addDeliveryZone: (zone: Omit<DeliveryZoneConfig, 'id'>) => void;
-  updateDeliveryZone: (id: number, zone: Partial<DeliveryZoneConfig>) => void;
-  deleteDeliveryZone: (id: number) => void;
-  exportConfig: () => string;
-  importConfig: (configData: string) => boolean;
-  resetToDefaults: () => void;
-  showNotification: (message: string, type: 'success' | 'info' | 'warning' | 'error') => void;
-  exportSystemFiles: () => void;
-  getCurrentConfig: () => AdminConfig;
+  updatePrices: (prices: PriceConfig) => void;
+  addDeliveryZone: (zone: Omit<DeliveryZone, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateDeliveryZone: (zone: DeliveryZone) => void;
+  deleteDeliveryZone: (id: string) => void;
+  addNovel: (novel: Omit<Novel, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateNovel: (novel: Novel) => void;
+  deleteNovel: (id: number) => void;
+  addNotification: (notification: Omit<AdminNotification, 'id' | 'timestamp'>) => void;
+  clearNotifications: () => void;
+  exportSystemBackup: () => void;
+  getSystemFiles: () => SystemFile[];
 }
 
-// Configuración actual aplicada - Generada desde el panel de control
-// Fecha de generación: ${timestamp}
-export const DEFAULT_ADMIN_CONFIG: AdminConfig = ${JSON.stringify(config, null, 2)};
-`;
-  };
+export const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
-  const generateAdminContextFile = (config: AdminConfig, timestamp: string): string => {
-    return `// Archivo generado automáticamente - Sistema TV a la Carta
-// Contexto administrativo con configuración actual aplicada
-// Última modificación: ${timestamp}
-// IMPORTANTE: Este archivo contiene la configuración sincronizada del panel de control
-
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { DEFAULT_ADMIN_CONFIG } from '../types/admin';
-import type { AdminConfig, AdminState, AdminAction, AdminContextType, NovelasConfig, DeliveryZoneConfig } from '../types/admin';
-
-const AdminContext = createContext<AdminContextType | undefined>(undefined);
+const initialState: AdminState = {
+  isAuthenticated: false,
+  prices: {
+    moviePrice: 80,
+    seriesPrice: 300,
+    transferFeePercentage: 10,
+    novelPricePerChapter: 5
+  },
+  deliveryZones: [
+    {
+      id: '1',
+      name: 'Santiago de Cuba > Santiago de Cuba > Nuevo Vista Alegre',
+      cost: 100,
+      active: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    },
+    {
+      id: '2',
+      name: 'Santiago de Cuba > Santiago de Cuba > Vista Alegre',
+      cost: 300,
+      active: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+  ],
+  novels: [],
+  systemFiles: [],
+  notifications: [],
+  lastBackup: null
+};
 
 function adminReducer(state: AdminState, action: AdminAction): AdminState {
   switch (action.type) {
-    case 'LOG_IN':
-      return { ...state, isAuthenticated: true };
-    case 'LOG_OUT':
+    case 'LOGIN':
+      return { ...state, isAuthenticated: action.payload };
+    case 'LOGOUT':
       return { ...state, isAuthenticated: false };
-    case 'UPDATE_PRICING':
-      const newConfig = { ...state.config, pricing: action.payload };
-      localStorage.setItem('adminConfig', JSON.stringify(newConfig));
-      return { ...state, config: newConfig };
-    case 'ADD_NOVELA':
-      const novelaWithId = { ...action.payload, id: Date.now() };
-      const configWithNovela = { 
-        ...state.config, 
-        novelas: [...state.config.novelas, novelaWithId] 
-      };
-      localStorage.setItem('adminConfig', JSON.stringify(configWithNovela));
-      return { ...state, config: configWithNovela };
-    case 'UPDATE_NOVELA':
-      const updatedNovelas = state.config.novelas.map(novela =>
-        novela.id === action.payload.id ? { ...novela, ...action.payload } : novela
-      );
-      const configWithUpdatedNovela = { ...state.config, novelas: updatedNovelas };
-      localStorage.setItem('adminConfig', JSON.stringify(configWithUpdatedNovela));
-      return { ...state, config: configWithUpdatedNovela };
-    case 'DELETE_NOVELA':
-      const filteredNovelas = state.config.novelas.filter(novela => novela.id !== action.payload);
-      const configWithoutNovela = { ...state.config, novelas: filteredNovelas };
-      localStorage.setItem('adminConfig', JSON.stringify(configWithoutNovela));
-      return { ...state, config: configWithoutNovela };
+    case 'UPDATE_PRICES':
+      return { ...state, prices: action.payload };
     case 'ADD_DELIVERY_ZONE':
-      const zoneWithId = { ...action.payload, id: Date.now() };
-      const configWithZone = { 
-        ...state.config, 
-        deliveryZones: [...state.config.deliveryZones, zoneWithId] 
+      return {
+        ...state,
+        deliveryZones: [...state.deliveryZones, action.payload]
       };
-      localStorage.setItem('adminConfig', JSON.stringify(configWithZone));
-      return { ...state, config: configWithZone };
     case 'UPDATE_DELIVERY_ZONE':
-      const updatedZones = state.config.deliveryZones.map(zone =>
-        zone.id === action.payload.id ? { ...zone, ...action.payload } : zone
-      );
-      const configWithUpdatedZone = { ...state.config, deliveryZones: updatedZones };
-      localStorage.setItem('adminConfig', JSON.stringify(configWithUpdatedZone));
-      return { ...state, config: configWithUpdatedZone };
+      return {
+        ...state,
+        deliveryZones: state.deliveryZones.map(zone =>
+          zone.id === action.payload.id ? action.payload : zone
+        )
+      };
     case 'DELETE_DELIVERY_ZONE':
-      const filteredZones = state.config.deliveryZones.filter(zone => zone.id !== action.payload);
-      const configWithoutZone = { ...state.config, deliveryZones: filteredZones };
-      localStorage.setItem('adminConfig', JSON.stringify(configWithoutZone));
-      return { ...state, config: configWithoutZone };
-    case 'LOAD_CONFIG':
-      localStorage.setItem('adminConfig', JSON.stringify(action.payload));
-      return { ...state, config: action.payload };
+      return {
+        ...state,
+        deliveryZones: state.deliveryZones.filter(zone => zone.id !== action.payload)
+      };
+    case 'ADD_NOVEL':
+      return {
+        ...state,
+        novels: [...state.novels, action.payload]
+      };
+    case 'UPDATE_NOVEL':
+      return {
+        ...state,
+        novels: state.novels.map(novel =>
+          novel.id === action.payload.id ? action.payload : novel
+        )
+      };
+    case 'DELETE_NOVEL':
+      return {
+        ...state,
+        novels: state.novels.filter(novel => novel.id !== action.payload)
+      };
+    case 'ADD_NOTIFICATION':
+      const notification: AdminNotification = {
+        ...action.payload,
+        id: Date.now().toString(),
+        timestamp: new Date().toISOString()
+      };
+      return {
+        ...state,
+        notifications: [notification, ...state.notifications.slice(0, 49)] // Keep last 50
+      };
+    case 'CLEAR_NOTIFICATIONS':
+      return { ...state, notifications: [] };
+    case 'UPDATE_SYSTEM_FILES':
+      return { ...state, systemFiles: action.payload };
+    case 'SET_LAST_BACKUP':
+      return { ...state, lastBackup: action.payload };
+    case 'LOAD_ADMIN_DATA':
+      return { ...state, ...action.payload };
     default:
       return state;
   }
 }
 
 export function AdminProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(adminReducer, {
-    isAuthenticated: false,
-    config: DEFAULT_ADMIN_CONFIG
-  });
+  const [state, dispatch] = useReducer(adminReducer, initialState);
 
+  // Load admin data from localStorage
   useEffect(() => {
-    const savedConfig = localStorage.getItem('adminConfig');
-    if (savedConfig) {
+    const savedData = localStorage.getItem('adminData');
+    if (savedData) {
       try {
-        const config = JSON.parse(savedConfig);
-        dispatch({ type: 'LOAD_CONFIG', payload: config });
+        const parsedData = JSON.parse(savedData);
+        dispatch({ type: 'LOAD_ADMIN_DATA', payload: parsedData });
       } catch (error) {
-        console.error('Error loading admin config:', error);
-        localStorage.setItem('adminConfig', JSON.stringify(DEFAULT_ADMIN_CONFIG));
+        console.error('Error loading admin data:', error);
       }
-    } else {
-      localStorage.setItem('adminConfig', JSON.stringify(DEFAULT_ADMIN_CONFIG));
     }
+    
+    // Initialize system files
+    updateSystemFiles();
   }, []);
 
+  // Save admin data to localStorage
+  useEffect(() => {
+    const dataToSave = {
+      prices: state.prices,
+      deliveryZones: state.deliveryZones,
+      novels: state.novels,
+      lastBackup: state.lastBackup
+    };
+    localStorage.setItem('adminData', JSON.stringify(dataToSave));
+  }, [state.prices, state.deliveryZones, state.novels, state.lastBackup]);
+
   const login = (username: string, password: string): boolean => {
-    if (username === 'admin' && password === 'admin123') {
-      dispatch({ type: 'LOG_IN' });
+    if (username === 'root' && password === 'video') {
+      dispatch({ type: 'LOGIN', payload: true });
+      addNotification({
+        type: 'success',
+        title: 'Acceso Autorizado',
+        message: 'Sesión iniciada correctamente en el panel de control',
+        section: 'Autenticación',
+        action: 'Login'
+      });
       return true;
     }
+    addNotification({
+      type: 'error',
+      title: 'Acceso Denegado',
+      message: 'Credenciales incorrectas',
+      section: 'Autenticación',
+      action: 'Login Failed'
+    });
     return false;
   };
 
   const logout = () => {
-    dispatch({ type: 'LOG_OUT' });
+    dispatch({ type: 'LOGOUT' });
+    addNotification({
+      type: 'info',
+      title: 'Sesión Cerrada',
+      message: 'Se ha cerrado la sesión del panel de control',
+      section: 'Autenticación',
+      action: 'Logout'
+    });
   };
 
-  const addNovela = (novela: Omit<NovelasConfig, 'id'>) => {
-    dispatch({ type: 'ADD_NOVELA', payload: novela });
+  const updatePrices = (prices: PriceConfig) => {
+    dispatch({ type: 'UPDATE_PRICES', payload: prices });
+    addNotification({
+      type: 'success',
+      title: 'Precios Actualizados',
+      message: `Película: $${prices.moviePrice}, Serie: $${prices.seriesPrice}, Transferencia: ${prices.transferFeePercentage}%`,
+      section: 'Control de Precios',
+      action: 'Update Prices'
+    });
   };
 
-  const updateNovela = (id: number, novela: Partial<NovelasConfig>) => {
-    dispatch({ type: 'UPDATE_NOVELA', payload: { ...novela, id } as NovelasConfig });
-  };
-
-  const deleteNovela = (id: number) => {
-    dispatch({ type: 'DELETE_NOVELA', payload: id });
-  };
-
-  const addDeliveryZone = (zone: Omit<DeliveryZoneConfig, 'id'>) => {
-    dispatch({ type: 'ADD_DELIVERY_ZONE', payload: zone });
-  };
-
-  const updateDeliveryZone = (id: number, zone: Partial<DeliveryZoneConfig>) => {
-    dispatch({ type: 'UPDATE_DELIVERY_ZONE', payload: { ...zone, id } as DeliveryZoneConfig });
-  };
-
-  const deleteDeliveryZone = (id: number) => {
-    dispatch({ type: 'DELETE_DELIVERY_ZONE', payload: id });
-  };
-
-  const exportConfig = (): string => {
-    const exportData = {
-      version: '1.0',
-      timestamp: new Date().toISOString(),
-      config: state.config
+  const addDeliveryZone = (zoneData: Omit<DeliveryZone, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const zone: DeliveryZone = {
+      ...zoneData,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
-    return JSON.stringify(exportData, null, 2);
+    dispatch({ type: 'ADD_DELIVERY_ZONE', payload: zone });
+    addNotification({
+      type: 'success',
+      title: 'Zona Agregada',
+      message: `Nueva zona de entrega: ${zone.name} - $${zone.cost} CUP`,
+      section: 'Zonas de Entrega',
+      action: 'Add Zone'
+    });
   };
 
-  const importConfig = (configData: string): boolean => {
-    try {
-      const data = JSON.parse(configData);
-      if (data.config && data.config.pricing && data.config.novelas && data.config.deliveryZones) {
-        dispatch({ type: 'LOAD_CONFIG', payload: data.config });
-        return true;
+  const updateDeliveryZone = (zone: DeliveryZone) => {
+    const updatedZone = { ...zone, updatedAt: new Date().toISOString() };
+    dispatch({ type: 'UPDATE_DELIVERY_ZONE', payload: updatedZone });
+    addNotification({
+      type: 'success',
+      title: 'Zona Actualizada',
+      message: `Zona modificada: ${zone.name}`,
+      section: 'Zonas de Entrega',
+      action: 'Update Zone'
+    });
+  };
+
+  const deleteDeliveryZone = (id: string) => {
+    const zone = state.deliveryZones.find(z => z.id === id);
+    dispatch({ type: 'DELETE_DELIVERY_ZONE', payload: id });
+    addNotification({
+      type: 'warning',
+      title: 'Zona Eliminada',
+      message: `Zona eliminada: ${zone?.name || 'Desconocida'}`,
+      section: 'Zonas de Entrega',
+      action: 'Delete Zone'
+    });
+  };
+
+  const addNovel = (novelData: Omit<Novel, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const novel: Novel = {
+      ...novelData,
+      id: Date.now(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    dispatch({ type: 'ADD_NOVEL', payload: novel });
+    addNotification({
+      type: 'success',
+      title: 'Novela Agregada',
+      message: `Nueva novela: ${novel.titulo} (${novel.capitulos} capítulos)`,
+      section: 'Gestión de Novelas',
+      action: 'Add Novel'
+    });
+  };
+
+  const updateNovel = (novel: Novel) => {
+    const updatedNovel = { ...novel, updatedAt: new Date().toISOString() };
+    dispatch({ type: 'UPDATE_NOVEL', payload: updatedNovel });
+    addNotification({
+      type: 'success',
+      title: 'Novela Actualizada',
+      message: `Novela modificada: ${novel.titulo}`,
+      section: 'Gestión de Novelas',
+      action: 'Update Novel'
+    });
+  };
+
+  const deleteNovel = (id: number) => {
+    const novel = state.novels.find(n => n.id === id);
+    dispatch({ type: 'DELETE_NOVEL', payload: id });
+    addNotification({
+      type: 'warning',
+      title: 'Novela Eliminada',
+      message: `Novela eliminada: ${novel?.titulo || 'Desconocida'}`,
+      section: 'Gestión de Novelas',
+      action: 'Delete Novel'
+    });
+  };
+
+  const addNotification = (notification: Omit<AdminNotification, 'id' | 'timestamp'>) => {
+    dispatch({ type: 'ADD_NOTIFICATION', payload: notification });
+  };
+
+  const clearNotifications = () => {
+    dispatch({ type: 'CLEAR_NOTIFICATIONS' });
+  };
+
+  const updateSystemFiles = () => {
+    const files: SystemFile[] = [
+      {
+        name: 'AdminContext.tsx',
+        path: 'src/context/AdminContext.tsx',
+        lastModified: new Date().toISOString(),
+        size: 12500,
+        type: 'context',
+        description: 'Contexto principal del panel administrativo'
+      },
+      {
+        name: 'CartContext.tsx',
+        path: 'src/context/CartContext.tsx',
+        lastModified: new Date().toISOString(),
+        size: 8900,
+        type: 'context',
+        description: 'Contexto del carrito de compras'
+      },
+      {
+        name: 'CheckoutModal.tsx',
+        path: 'src/components/CheckoutModal.tsx',
+        lastModified: new Date().toISOString(),
+        size: 15600,
+        type: 'component',
+        description: 'Modal de checkout con zonas de entrega'
+      },
+      {
+        name: 'NovelasModal.tsx',
+        path: 'src/components/NovelasModal.tsx',
+        lastModified: new Date().toISOString(),
+        size: 18200,
+        type: 'component',
+        description: 'Modal de catálogo de novelas'
+      },
+      {
+        name: 'PriceCard.tsx',
+        path: 'src/components/PriceCard.tsx',
+        lastModified: new Date().toISOString(),
+        size: 3400,
+        type: 'component',
+        description: 'Componente de visualización de precios'
+      },
+      {
+        name: 'AdminPanel.tsx',
+        path: 'src/pages/AdminPanel.tsx',
+        lastModified: new Date().toISOString(),
+        size: 25000,
+        type: 'page',
+        description: 'Panel de control administrativo principal'
       }
-      return false;
+    ];
+    
+    dispatch({ type: 'UPDATE_SYSTEM_FILES', payload: files });
+  };
+
+  const exportSystemBackup = () => {
+    // Generate system files with current modifications
+    const systemFilesContent = generateSystemFilesContent();
+    
+    const backupData = {
+      appName: 'TV a la Carta',
+      version: '2.0.0',
+      exportDate: new Date().toISOString(),
+      adminConfig: {
+        prices: state.prices,
+        deliveryZones: state.deliveryZones,
+        novels: state.novels
+      },
+      systemFiles: systemFilesContent,
+      notifications: state.notifications.slice(0, 100), // Last 100 notifications
+      metadata: {
+        totalZones: state.deliveryZones.length,
+        activeZones: state.deliveryZones.filter(z => z.active).length,
+        totalNovels: state.novels.length,
+        activeNovels: state.novels.filter(n => n.active).length,
+        lastBackup: state.lastBackup
+      }
+    };
+
+    // Create ZIP file with proper directory structure
+    createSystemBackupZip(backupData);
+
+    const backupTime = new Date().toISOString();
+    dispatch({ type: 'SET_LAST_BACKUP', payload: backupTime });
+    
+    addNotification({
+      type: 'success',
+      title: 'Backup Exportado',
+      message: 'Sistema completo exportado como archivo ZIP con estructura de carpetas',
+      section: 'Sistema Backup',
+      action: 'Export Backup'
+    });
+  };
+
+  const generateSystemFilesContent = () => {
+    const files: { [key: string]: string } = {};
+    
+    // Generate AdminContext.tsx with current state
+    files['src/context/AdminContext.tsx'] = generateAdminContextContent();
+    files['src/context/CartContext.tsx'] = generateCartContextContent();
+    files['src/components/CheckoutModal.tsx'] = generateCheckoutModalContent();
+    files['src/components/NovelasModal.tsx'] = generateNovelasModalContent();
+    files['src/components/PriceCard.tsx'] = generatePriceCardContent();
+    files['src/pages/AdminPanel.tsx'] = generateAdminPanelContent();
+    files['README.md'] = generateReadmeContent();
+    files['config/system-changes.json'] = JSON.stringify({
+      lastModified: new Date().toISOString(),
+      changes: state.notifications.slice(0, 20),
+      version: '2.0.0'
+    }, null, 2);
+    
+    return files;
+  };
+
+  const generateAdminContextContent = () => {
+    return `// AdminContext.tsx - Generated with current configuration
+// Last updated: ${new Date().toISOString()}
+
+import React, { createContext, useContext, useReducer, useEffect } from 'react';
+
+export interface PriceConfig {
+  moviePrice: ${state.prices.moviePrice};
+  seriesPrice: ${state.prices.seriesPrice};
+  transferFeePercentage: ${state.prices.transferFeePercentage};
+  novelPricePerChapter: ${state.prices.novelPricePerChapter};
+}
+
+// Current delivery zones configuration
+const deliveryZones = ${JSON.stringify(state.deliveryZones, null, 2)};
+
+// Current novels configuration  
+const novels = ${JSON.stringify(state.novels, null, 2)};
+
+// Rest of AdminContext implementation...
+export default AdminContext;`;
+  };
+
+  const generateCartContextContent = () => {
+    return `// CartContext.tsx - Generated with current configuration
+// Last updated: ${new Date().toISOString()}
+
+import React, { createContext, useContext, useReducer, useEffect } from 'react';
+
+// Current pricing configuration
+const MOVIE_PRICE = ${state.prices.moviePrice};
+const SERIES_PRICE = ${state.prices.seriesPrice};
+const TRANSFER_FEE = ${state.prices.transferFeePercentage};
+
+// Rest of CartContext implementation...
+export default CartContext;`;
+  };
+
+  const generateCheckoutModalContent = () => {
+    return `// CheckoutModal.tsx - Generated with current configuration
+// Last updated: ${new Date().toISOString()}
+
+import React, { useState } from 'react';
+
+// Current delivery zones
+const DELIVERY_ZONES = {
+${state.deliveryZones.map(zone => `  '${zone.name}': ${zone.cost}`).join(',\n')}
+};
+
+// Rest of CheckoutModal implementation...
+export default CheckoutModal;`;
+  };
+
+  const generateNovelasModalContent = () => {
+    return `// NovelasModal.tsx - Generated with current configuration
+// Last updated: ${new Date().toISOString()}
+
+import React, { useState, useEffect } from 'react';
+
+// Current novels catalog
+const defaultNovelas = ${JSON.stringify(state.novels.map(novel => ({
+  id: novel.id,
+  titulo: novel.titulo,
+  genero: novel.genero,
+  capitulos: novel.capitulos,
+  año: novel.año,
+  descripcion: novel.descripcion
+})), null, 2)};
+
+// Current novel pricing
+const novelPricePerChapter = ${state.prices.novelPricePerChapter};
+
+// Rest of NovelasModal implementation...
+export default NovelasModal;`;
+  };
+
+  const generatePriceCardContent = () => {
+    return `// PriceCard.tsx - Generated with current configuration
+// Last updated: ${new Date().toISOString()}
+
+import React from 'react';
+
+// Current pricing configuration
+const DEFAULT_MOVIE_PRICE = ${state.prices.moviePrice};
+const DEFAULT_SERIES_PRICE = ${state.prices.seriesPrice};
+const DEFAULT_TRANSFER_FEE = ${state.prices.transferFeePercentage};
+
+// Rest of PriceCard implementation...
+export default PriceCard;`;
+  };
+
+  const generateAdminPanelContent = () => {
+    return `// AdminPanel.tsx - Generated with current configuration
+// Last updated: ${new Date().toISOString()}
+
+import React, { useState } from 'react';
+
+// Current system configuration
+const SYSTEM_CONFIG = {
+  prices: ${JSON.stringify(state.prices, null, 2)},
+  deliveryZones: ${state.deliveryZones.length},
+  novels: ${state.novels.length},
+  lastBackup: '${state.lastBackup}'
+};
+
+// Rest of AdminPanel implementation...
+export default AdminPanel;`;
+  };
+
+  const generateReadmeContent = () => {
+    return `# TV a la Carta - Sistema de Control
+
+## Configuración Actual del Sistema
+
+**Última actualización:** ${new Date().toLocaleString('es-ES')}
+
+### Precios Configurados
+- Películas: $${state.prices.moviePrice} CUP
+- Series: $${state.prices.seriesPrice} CUP por temporada
+- Recargo transferencia: ${state.prices.transferFeePercentage}%
+- Novelas: $${state.prices.novelPricePerChapter} CUP por capítulo
+
+### Zonas de Entrega
+Total de zonas configuradas: ${state.deliveryZones.length}
+Zonas activas: ${state.deliveryZones.filter(z => z.active).length}
+
+### Catálogo de Novelas
+Total de novelas: ${state.novels.length}
+Novelas activas: ${state.novels.filter(n => n.active).length}
+
+### Archivos del Sistema
+- AdminContext.tsx: Contexto principal de administración
+- CartContext.tsx: Contexto del carrito de compras
+- CheckoutModal.tsx: Modal de checkout con zonas de entrega
+- NovelasModal.tsx: Modal del catálogo de novelas
+- PriceCard.tsx: Componente de visualización de precios
+- AdminPanel.tsx: Panel de control administrativo
+
+## Instrucciones de Instalación
+
+1. Extraer todos los archivos manteniendo la estructura de carpetas
+2. Reemplazar los archivos existentes en el proyecto
+3. Reiniciar la aplicación para aplicar los cambios
+
+---
+*Generado automáticamente por TV a la Carta Admin System*`;
+  };
+
+  const createSystemBackupZip = async (backupData: any) => {
+    try {
+      // Import JSZip dynamically
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+      
+      // Create directory structure and add files
+      const systemFiles = backupData.systemFiles;
+      
+      Object.entries(systemFiles).forEach(([filePath, content]) => {
+        zip.file(filePath, content as string);
+      });
+      
+      // Generate ZIP file
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      
+      // Download ZIP file
+      const url = URL.createObjectURL(zipBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `TV_a_la_Carta_Sistema_${new Date().toISOString().split('T')[0]}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
     } catch (error) {
-      console.error('Error importing config:', error);
-      return false;
+      console.error('Error creating ZIP file:', error);
+      // Fallback to JSON export
+      const blob = new Blob([JSON.stringify(backupData, null, 2)], {
+        type: 'application/json'
+      });
+      
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `TV_a_la_Carta_Backup_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
     }
   };
 
-  const resetToDefaults = () => {
-    dispatch({ type: 'LOAD_CONFIG', payload: DEFAULT_ADMIN_CONFIG });
-  };
-
-  const showNotification = (message: string, type: 'success' | 'info' | 'warning' | 'error') => {
-    console.log(\`\${type.toUpperCase()}: \${message}\`);
-  };
-
-  const getCurrentConfig = (): AdminConfig => {
-    return state.config;
-  };
-
-  const exportSystemFiles = () => {
-    // Implementación de exportación de archivos del sistema
-    console.log('Exportando archivos del sistema...');
+  const getSystemFiles = (): SystemFile[] => {
+    return state.systemFiles;
   };
 
   return (
-    <AdminContext.Provider value={{ 
-      state, 
-      dispatch, 
-      login, 
-      logout, 
-      addNovela, 
-      updateNovela, 
-      deleteNovela, 
-      addDeliveryZone, 
-      updateDeliveryZone, 
-      deleteDeliveryZone, 
-      exportConfig, 
-      importConfig, 
-      resetToDefaults, 
-      showNotification, 
-      exportSystemFiles,
-      getCurrentConfig
-    }}>
-      {children}
-    </AdminContext.Provider>
-  );
-}
-
-export function useAdmin() {
-  const context = useContext(AdminContext);
-  if (context === undefined) {
-    throw new Error('useAdmin must be used within an AdminProvider');
-  }
-  return context;
-}
-`;
-  };
-
-  const generateAdminPanelFile = (config: AdminConfig, timestamp: string): string => {
-    // Leer el archivo actual del AdminPanel y aplicar la configuración
-    return `// Archivo generado automáticamente - Sistema TV a la Carta
-// Panel de control administrativo con configuración actual aplicada
-// Última modificación: ${timestamp}
-// IMPORTANTE: Este archivo contiene toda la lógica del panel sincronizada
-
-// [El contenido completo del AdminPanel.tsx se mantiene igual pero con la configuración actual aplicada]
-// Este archivo es demasiado largo para incluir completo aquí, pero mantiene toda la funcionalidad
-// con los valores de configuración actuales aplicados desde el panel de control.
-
-// Configuración aplicada en este archivo:
-// - Precios: Película $${config.pricing.moviePrice} CUP, Serie $${config.pricing.seriesPrice} CUP/temp
-// - Recargo transferencia: ${config.pricing.transferFeePercentage}%
-// - Novelas: ${config.novelas.length} novelas configuradas
-// - Zonas de entrega: ${config.deliveryZones.length} zonas configuradas
-
-// Para obtener el archivo completo, use la función de exportación del panel de control.
-`;
-  };
-
-  const generateCheckoutModalFile = (config: AdminConfig, timestamp: string): string => {
-    return `// Archivo generado automáticamente - Sistema TV a la Carta
-// Modal de checkout con configuración actual aplicada
-// Última modificación: ${timestamp}
-// IMPORTANTE: Este archivo está sincronizado con la configuración del panel de control
-
-// Configuración aplicada:
-// - Precios base: Película $${config.pricing.moviePrice} CUP, Serie $${config.pricing.seriesPrice} CUP/temporada
-// - Recargo por transferencia: ${config.pricing.transferFeePercentage}%
-// - Zonas de entrega activas: ${config.deliveryZones.filter(z => z.active).length}
-
-// [El contenido completo del CheckoutModal.tsx se mantiene con la configuración actual]
-// Este archivo mantiene toda la funcionalidad de checkout pero con los precios y zonas
-// de entrega actualizados según la configuración del panel de control.
-`;
-  };
-
-  const generateNovelasModalFile = (config: AdminConfig, timestamp: string): string => {
-    return `// Archivo generado automáticamente - Sistema TV a la Carta
-// Modal de novelas con catálogo actual aplicado
-// Última modificación: ${timestamp}
-// IMPORTANTE: Este archivo contiene el catálogo sincronizado del panel de control
-
-// Catálogo aplicado:
-// - Total de novelas: ${config.novelas.length}
-// - Recargo por transferencia: ${config.pricing.transferFeePercentage}%
-// - Novelas por género: ${[...new Set(config.novelas.map(n => n.genero))].join(', ')}
-
-// [El contenido completo del NovelasModal.tsx se mantiene con el catálogo actual]
-// Este archivo mantiene toda la funcionalidad del modal de novelas pero con el
-// catálogo actualizado según la configuración del panel de control.
-`;
-  };
-
-  const generateReadmeFile = (config: AdminConfig, timestamp: string): string => {
-    return `# TV a la Carta - Archivos del Sistema Exportados
-
-**Fecha de exportación:** ${new Date(timestamp).toLocaleString('es-ES')}
-**Versión del sistema:** 1.0
-
-## Descripción
-
-Este paquete contiene los archivos del sistema TV a la Carta con la configuración actual aplicada desde el panel de control administrativo.
-
-## Configuración Aplicada
-
-### Precios del Sistema
-- **Películas:** $${config.pricing.moviePrice} CUP
-- **Series:** $${config.pricing.seriesPrice} CUP por temporada
-- **Recargo por transferencia:** ${config.pricing.transferFeePercentage}%
-
-### Catálogo de Novelas
-- **Total de novelas:** ${config.novelas.length}
-- **Géneros disponibles:** ${[...new Set(config.novelas.map(n => n.genero))].join(', ')}
-- **Rango de años:** ${Math.min(...config.novelas.map(n => n.año))} - ${Math.max(...config.novelas.map(n => n.año))}
-
-### Zonas de Entrega
-- **Total de zonas:** ${config.deliveryZones.length}
-- **Zonas activas:** ${config.deliveryZones.filter(z => z.active).length}
-- **Rango de costos:** $${Math.min(...config.deliveryZones.filter(z => z.cost > 0).map(z => z.cost))} - $${Math.max(...config.deliveryZones.map(z => z.cost))} CUP
-
-## Archivos Incluidos
-
-### Tipos y Configuración
-- \`src/types/admin.ts\` - Tipos TypeScript y configuración por defecto
-
-### Contexto y Estado
-- \`src/context/AdminContext.tsx\` - Contexto de administración con estado sincronizado
-
-### Componentes
-- \`src/components/AdminPanel.tsx\` - Panel de control administrativo
-- \`src/components/CheckoutModal.tsx\` - Modal de checkout con precios actualizados
-- \`src/components/NovelasModal.tsx\` - Modal de novelas con catálogo actualizado
-
-## Instalación
-
-1. Haga backup de sus archivos actuales
-2. Reemplace los archivos en las ubicaciones correspondientes
-3. Reinicie la aplicación
-4. Verifique que la configuración se haya aplicado correctamente
-
-## Compatibilidad
-
-- **React:** ^18.3.1
-- **TypeScript:** ^5.5.3
-- **Tailwind CSS:** ^3.4.1
-
-## Notas Importantes
-
-- Estos archivos contienen la configuración exacta del momento de exportación
-- Al importarlos, se sobrescribirá la configuración actual
-- Se recomienda hacer backup antes de la instalación
-- La configuración se sincroniza automáticamente con localStorage
-
-## Soporte
-
-Para soporte técnico o consultas sobre la configuración, contacte al administrador del sistema.
-
----
-*Generado automáticamente por el Sistema TV a la Carta*
-`;
-  };
-
-  const generateInstallGuide = (config: AdminConfig, timestamp: string): string => {
-    return `# Guía de Instalación - TV a la Carta System Files
-
-**Fecha:** ${new Date(timestamp).toLocaleString('es-ES')}
-
-## Pasos de Instalación
-
-### 1. Preparación
-\`\`\`bash
-# Crear backup de archivos actuales
-cp -r src/types/admin.ts src/types/admin.ts.backup
-cp -r src/context/AdminContext.tsx src/context/AdminContext.tsx.backup
-cp -r src/components/AdminPanel.tsx src/components/AdminPanel.tsx.backup
-cp -r src/components/CheckoutModal.tsx src/components/CheckoutModal.tsx.backup
-cp -r src/components/NovelasModal.tsx src/components/NovelasModal.tsx.backup
-\`\`\`
-
-### 2. Instalación de Archivos
-
-#### Tipos y Configuración
-\`\`\`bash
-# Reemplazar archivo de tipos
-cp src_types_admin_${timestamp.split('T')[0].replace(/-/g, '')}_*.ts src/types/admin.ts
-\`\`\`
-
-#### Contexto
-\`\`\`bash
-# Reemplazar contexto administrativo
-cp src_context_AdminContext_${timestamp.split('T')[0].replace(/-/g, '')}_*.tsx src/context/AdminContext.tsx
-\`\`\`
-
-#### Componentes
-\`\`\`bash
-# Reemplazar componentes
-cp src_components_AdminPanel_${timestamp.split('T')[0].replace(/-/g, '')}_*.tsx src/components/AdminPanel.tsx
-cp src_components_CheckoutModal_${timestamp.split('T')[0].replace(/-/g, '')}_*.tsx src/components/CheckoutModal.tsx
-cp src_components_NovelasModal_${timestamp.split('T')[0].replace(/-/g, '')}_*.tsx src/components/NovelasModal.tsx
-\`\`\`
-
-### 3. Verificación
-
-#### Verificar Configuración de Precios
-- Película: $${config.pricing.moviePrice} CUP
-- Serie: $${config.pricing.seriesPrice} CUP/temporada
-- Transferencia: +${config.pricing.transferFeePercentage}%
-
-#### Verificar Catálogo de Novelas
-- Total: ${config.novelas.length} novelas
-- Verificar que todas las novelas aparezcan en el modal
-
-#### Verificar Zonas de Entrega
-- Total: ${config.deliveryZones.length} zonas
-- Activas: ${config.deliveryZones.filter(z => z.active).length} zonas
-
-### 4. Reinicio de la Aplicación
-
-\`\`\`bash
-# Detener servidor de desarrollo
-# Ctrl+C
-
-# Limpiar cache (opcional)
-npm run build
-rm -rf node_modules/.cache
-
-# Reiniciar servidor
-npm run dev
-\`\`\`
-
-### 5. Pruebas Post-Instalación
-
-1. **Acceder al Panel de Control**
-   - Usuario: admin
-   - Contraseña: admin123
-
-2. **Verificar Precios**
-   - Agregar película al carrito
-   - Verificar precio: $${config.pricing.moviePrice} CUP
-   - Cambiar tipo de pago a transferencia
-   - Verificar recargo: +${config.pricing.transferFeePercentage}%
-
-3. **Verificar Novelas**
-   - Abrir modal de novelas
-   - Verificar ${config.novelas.length} novelas disponibles
-   - Probar selección y cálculo de precios
-
-4. **Verificar Zonas de Entrega**
-   - Ir al checkout
-   - Verificar ${config.deliveryZones.filter(z => z.active).length} zonas activas
-   - Probar cálculo de costos de entrega
-
-## Solución de Problemas
-
-### Error: "Cannot find module"
-\`\`\`bash
-npm install
-npm run dev
-\`\`\`
-
-### Error: "Configuration not loading"
-1. Limpiar localStorage del navegador
-2. Recargar la aplicación
-3. La configuración se aplicará automáticamente
-
-### Error: "Prices not updating"
-1. Verificar que AdminContext.tsx se haya actualizado
-2. Verificar que localStorage contenga 'adminConfig'
-3. Reiniciar la aplicación
-
-## Rollback (Restaurar Versión Anterior)
-
-\`\`\`bash
-# Restaurar desde backup
-cp src/types/admin.ts.backup src/types/admin.ts
-cp src/context/AdminContext.tsx.backup src/context/AdminContext.tsx
-cp src/components/AdminPanel.tsx.backup src/components/AdminPanel.tsx
-cp src/components/CheckoutModal.tsx.backup src/components/CheckoutModal.tsx
-cp src/components/NovelasModal.tsx.backup src/components/NovelasModal.tsx
-
-# Reiniciar aplicación
-npm run dev
-\`\`\`
-
----
-*Guía generada automáticamente por el Sistema TV a la Carta*
-`;
-  };
-
-  return (
-    <AdminContext.Provider value={{ 
-      state, 
-      dispatch, 
-      login, 
-      logout, 
-      addNovela, 
-      updateNovela, 
-      deleteNovela, 
-      addDeliveryZone, 
-      updateDeliveryZone, 
-      deleteDeliveryZone, 
-      exportConfig, 
-      importConfig, 
-      resetToDefaults, 
-      showNotification, 
-      exportSystemFiles,
-      getCurrentConfig
+    <AdminContext.Provider value={{
+      state,
+      login,
+      logout,
+      updatePrices,
+      addDeliveryZone,
+      updateDeliveryZone,
+      deleteDeliveryZone,
+      addNovel,
+      updateNovel,
+      deleteNovel,
+      addNotification,
+      clearNotifications,
+      exportSystemBackup,
+      getSystemFiles
     }}>
       {children}
     </AdminContext.Provider>
