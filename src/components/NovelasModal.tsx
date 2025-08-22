@@ -88,14 +88,7 @@ export function NovelasModal({ isOpen, onClose }: NovelasModalProps) {
   ];
 
   // Combine admin novels with default novels - real-time sync
-  const allNovelas = [...defaultNovelas, ...adminNovels.map(novel => ({
-    id: novel.id,
-    titulo: novel.titulo,
-    genero: novel.genero,
-    capitulos: novel.capitulos,
-    año: novel.año,
-    descripcion: novel.descripcion
-  }))];
+  const allNovelas = [...defaultNovelas, ...adminNovels];
 
   const phoneNumber = '+5354690878';
 

@@ -362,10 +362,48 @@ export function AdminPanel() {
         <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white shadow-xl">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-orange-100 text-sm font-medium">Notificaciones</p>
-              <p className="text-3xl font-bold">{state.notifications.length}</p>
+              <p className="text-orange-100 text-sm font-medium">Recargo Transfer.</p>
+              <p className="text-3xl font-bold">{state.prices.transferFeePercentage}%</p>
             </div>
             <Bell className="h-12 w-12 text-orange-200" />
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl p-6 border-2 border-green-200">
+        <div className="flex items-center mb-4">
+          <div className="bg-green-100 p-3 rounded-xl mr-4">
+            <RefreshCw className="h-6 w-6 text-green-600" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900">Estado de Sincronización</h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-white rounded-lg p-4 border border-green-200">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700">Precios</span>
+              <div className="flex items-center">
+                <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                <span className="text-xs text-green-600 font-medium">Sincronizado</span>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-lg p-4 border border-green-200">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700">Zonas de Entrega</span>
+              <div className="flex items-center">
+                <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                <span className="text-xs text-green-600 font-medium">Sincronizado</span>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-lg p-4 border border-green-200">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700">Catálogo Novelas</span>
+              <div className="flex items-center">
+                <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                <span className="text-xs text-green-600 font-medium">Sincronizado</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -466,7 +504,7 @@ export function AdminPanel() {
               </div>
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Se aplicará automáticamente en todos los cálculos de transferencia
+              Se aplicará automáticamente en todos los cálculos de transferencia en tiempo real
             </p>
           </div>
           
@@ -486,15 +524,17 @@ export function AdminPanel() {
         </div>
         
         <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-          <h4 className="font-semibold text-blue-900 mb-2">Vista Previa de Cambios</h4>
+          <h4 className="font-semibold text-blue-900 mb-2">Vista Previa de Cambios Sincronizados</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-blue-700">• Película: ${priceForm.moviePrice} CUP</p>
               <p className="text-blue-700">• Serie (1 temp.): ${priceForm.seriesPrice} CUP</p>
+              <p className="text-blue-700">• Novela (por cap.): ${priceForm.novelPricePerChapter} CUP</p>
             </div>
             <div>
               <p className="text-blue-700">• Transferencia película: ${Math.round(priceForm.moviePrice * (1 + priceForm.transferFeePercentage / 100))} CUP</p>
               <p className="text-blue-700">• Transferencia serie: ${Math.round(priceForm.seriesPrice * (1 + priceForm.transferFeePercentage / 100))} CUP</p>
+              <p className="text-blue-700">• Recargo: {priceForm.transferFeePercentage}% en toda la app</p>
             </div>
           </div>
         </div>
@@ -504,7 +544,7 @@ export function AdminPanel() {
           className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-lg flex items-center justify-center space-x-2"
         >
           <Save className="h-5 w-5" />
-          <span>Guardar Precios</span>
+          <span>Guardar y Sincronizar Precios</span>
         </button>
       </form>
     </div>
@@ -598,7 +638,10 @@ export function AdminPanel() {
 
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
         <div className="bg-gradient-to-r from-blue-50 to-purple-50 px-6 py-4 border-b border-gray-200">
-          <h4 className="text-lg font-bold text-gray-900">Zonas Configuradas ({state.deliveryZones.length})</h4>
+          <h4 className="text-lg font-bold text-gray-900">Todas las Zonas de Entrega ({state.deliveryZones.length})</h4>
+          <p className="text-sm text-gray-600 mt-1">
+            Gestiona todas las zonas de entrega disponibles en la aplicación
+          </p>
         </div>
         <div className="divide-y divide-gray-200">
           {state.deliveryZones.map((zone) => (
@@ -771,7 +814,10 @@ export function AdminPanel() {
 
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
         <div className="bg-gradient-to-r from-pink-50 to-purple-50 px-6 py-4 border-b border-gray-200">
-          <h4 className="text-lg font-bold text-gray-900">Novelas Configuradas ({state.novels.length})</h4>
+          <h4 className="text-lg font-bold text-gray-900">Todas las Novelas del Catálogo ({state.novels.length})</h4>
+          <p className="text-sm text-gray-600 mt-1">
+            Gestiona todas las novelas disponibles en el catálogo de la aplicación
+          </p>
         </div>
         <div className="divide-y divide-gray-200 max-h-96 overflow-y-auto">
           {state.novels.map((novel) => (
@@ -824,8 +870,11 @@ export function AdminPanel() {
         <div className="bg-gradient-to-r from-indigo-50 to-blue-50 px-6 py-4 border-b border-gray-200">
           <h3 className="text-xl font-bold text-gray-900 flex items-center">
             <Settings className="mr-3 h-6 w-6 text-indigo-600" />
-            Sistema y Exportación
+            Sistema y Exportación Completa
           </h3>
+          <p className="text-sm text-gray-600 mt-1">
+            Exporta archivos completos con todas las configuraciones sincronizadas
+          </p>
         </div>
         <div className="p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -834,7 +883,7 @@ export function AdminPanel() {
                 <h4 className="font-semibold text-blue-900">Estado del Sistema</h4>
                 <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
               </div>
-              <p className="text-blue-700 text-sm">Sistema operativo y sincronizado</p>
+              <p className="text-blue-700 text-sm">Sistema operativo y sincronizado en tiempo real</p>
             </div>
             
             <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-200">
@@ -849,51 +898,84 @@ export function AdminPanel() {
             
             <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border border-green-200">
               <div className="flex items-center justify-between mb-4">
-                <h4 className="font-semibold text-green-900">Archivos del Sistema</h4>
+                <h4 className="font-semibold text-green-900">Archivos Sincronizados</h4>
                 <FileText className="h-5 w-5 text-green-600" />
               </div>
-              <p className="text-green-700 text-sm">6 archivos principales</p>
+              <p className="text-green-700 text-sm">6 archivos principales con configuraciones actuales</p>
             </div>
           </div>
 
           <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6 border border-indigo-200">
             <div className="text-center">
-              <h4 className="text-xl font-bold text-gray-900 mb-4">Exportar Sistema Completo</h4>
+              <h4 className="text-xl font-bold text-gray-900 mb-4">Exportar Sistema Completo Sincronizado</h4>
               <p className="text-gray-600 mb-6">
-                Exporta todos los archivos del sistema con las configuraciones actuales sincronizadas
+                Exporta todos los archivos del sistema como clones exactos con las configuraciones actuales aplicadas y sincronizadas en tiempo real
               </p>
+              <div className="bg-white rounded-lg p-4 mb-6 border border-gray-200">
+                <h5 className="font-semibold text-gray-900 mb-3">Archivos que se exportarán:</h5>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-700">
+                  <div className="flex items-center">
+                    <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                    <span>AdminContext.tsx (con configuraciones actuales)</span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                    <span>CartContext.tsx (precios sincronizados)</span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                    <span>CheckoutModal.tsx (zonas y precios actuales)</span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                    <span>NovelasModal.tsx (catálogo y precios actuales)</span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                    <span>PriceCard.tsx (precios sincronizados)</span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                    <span>AdminPanel.tsx (panel completo actualizado)</span>
+                  </div>
+                </div>
+              </div>
               <button
                 onClick={exportSystemBackup}
                 className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold py-4 px-8 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl flex items-center space-x-3 mx-auto"
               >
                 <Download className="h-6 w-6" />
-                <span>Exportar Sistema</span>
+                <span>Exportar Sistema Completo</span>
               </button>
             </div>
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
-              <h4 className="font-semibold text-gray-900">Archivos del Sistema</h4>
+              <h4 className="font-semibold text-gray-900">Archivos del Sistema Sincronizados</h4>
             </div>
             <div className="divide-y divide-gray-200">
               {[
-                { name: 'AdminContext.tsx', description: 'Contexto principal del sistema', status: 'Sincronizado' },
-                { name: 'AdminPanel.tsx', description: 'Panel de control administrativo', status: 'Sincronizado' },
-                { name: 'CheckoutModal.tsx', description: 'Modal de checkout con zonas', status: 'Sincronizado' },
-                { name: 'NovelasModal.tsx', description: 'Modal de catálogo de novelas', status: 'Sincronizado' },
-                { name: 'PriceCard.tsx', description: 'Componente de precios', status: 'Sincronizado' },
-                { name: 'CartContext.tsx', description: 'Contexto del carrito', status: 'Sincronizado' }
+                { name: 'AdminContext.tsx', description: 'Contexto principal con configuraciones actuales', status: 'Sincronizado', config: `Precios: $${state.prices.moviePrice}/$${state.prices.seriesPrice}, Transfer: ${state.prices.transferFeePercentage}%` },
+                { name: 'AdminPanel.tsx', description: 'Panel de control con exportación mejorada', status: 'Sincronizado', config: `${state.deliveryZones.length} zonas, ${state.novels.length} novelas` },
+                { name: 'CheckoutModal.tsx', description: 'Modal con zonas y precios actualizados', status: 'Sincronizado', config: `${state.deliveryZones.length} zonas de entrega configuradas` },
+                { name: 'NovelasModal.tsx', description: 'Catálogo con precios y novelas actuales', status: 'Sincronizado', config: `${state.novels.length} novelas, $${state.prices.novelPricePerChapter}/cap` },
+                { name: 'PriceCard.tsx', description: 'Componente con precios sincronizados', status: 'Sincronizado', config: `Transfer: ${state.prices.transferFeePercentage}% aplicado` },
+                { name: 'CartContext.tsx', description: 'Carrito con cálculos actualizados', status: 'Sincronizado', config: 'Precios en tiempo real aplicados' }
               ].map((file, index) => (
                 <div key={index} className="p-4 hover:bg-gray-50 transition-colors">
                   <div className="flex items-center justify-between">
-                    <div>
+                    <div className="flex-1">
                       <h5 className="font-medium text-gray-900">{file.name}</h5>
                       <p className="text-gray-600 text-sm">{file.description}</p>
+                      <p className="text-gray-500 text-xs mt-1">{file.config}</p>
                     </div>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      {file.status}
-                    </span>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        {file.status}
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -920,7 +1002,7 @@ export function AdminPanel() {
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
         <div className="bg-gradient-to-r from-orange-50 to-red-50 px-6 py-4 border-b border-gray-200">
           <h4 className="text-lg font-bold text-gray-900">
-            Historial de Actividades ({state.notifications.length})
+            Historial de Actividades y Sincronización ({state.notifications.length})
           </h4>
         </div>
         <div className="divide-y divide-gray-200 max-h-96 overflow-y-auto">
@@ -984,7 +1066,7 @@ export function AdminPanel() {
                 </div>
                 <div>
                   <h1 className="text-xl font-bold text-gray-900">Panel de Control</h1>
-                  <p className="text-sm text-gray-600">Sistema de Administración</p>
+                  <p className="text-sm text-gray-600">Sistema de Administración Sincronizado</p>
                 </div>
               </div>
             </div>
