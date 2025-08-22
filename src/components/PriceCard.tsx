@@ -1,6 +1,6 @@
 import React from 'react';
 import { DollarSign, Tv, Film, Star, CreditCard } from 'lucide-react';
-import { useAdmin, AdminContext } from '../context/AdminContext';
+import { AdminContext } from '../context/AdminContext';
 
 interface PriceCardProps {
   type: 'movie' | 'tv';
@@ -12,7 +12,7 @@ interface PriceCardProps {
 export function PriceCard({ type, selectedSeasons = [], episodeCount = 0, isAnime = false }: PriceCardProps) {
   const adminContext = React.useContext(AdminContext);
   
-  // Get prices from admin context if available
+  // Get prices from admin context with real-time updates
   const moviePrice = adminContext?.state?.prices?.moviePrice || 80;
   const seriesPrice = adminContext?.state?.prices?.seriesPrice || 300;
   const transferFeePercentage = adminContext?.state?.prices?.transferFeePercentage || 10;
@@ -21,12 +21,8 @@ export function PriceCard({ type, selectedSeasons = [], episodeCount = 0, isAnim
     if (type === 'movie') {
       return moviePrice;
     } else {
-      // Series: precio dinámico por temporada
-      if (isAnime) {
-        return selectedSeasons.length * seriesPrice;
-      } else {
-        return selectedSeasons.length * seriesPrice;
-      }
+      // Series: dynamic price per season
+      return selectedSeasons.length * seriesPrice;
     }
   };
 
@@ -70,7 +66,7 @@ export function PriceCard({ type, selectedSeasons = [], episodeCount = 0, isAnim
       </div>
       
       <div className="space-y-3">
-        {/* Precio en Efectivo */}
+        {/* Cash Price */}
         <div className="bg-white rounded-lg p-3 border border-green-200">
           <div className="flex items-center justify-between mb-1">
             <span className="text-sm font-medium text-green-700 flex items-center">
@@ -83,7 +79,7 @@ export function PriceCard({ type, selectedSeasons = [], episodeCount = 0, isAnim
           </div>
         </div>
         
-        {/* Precio con Transferencia */}
+        {/* Transfer Price */}
         <div className="bg-orange-50 rounded-lg p-3 border border-orange-200">
           <div className="flex items-center justify-between mb-1">
             <span className="text-sm font-medium text-orange-700 flex items-center">
@@ -95,7 +91,7 @@ export function PriceCard({ type, selectedSeasons = [], episodeCount = 0, isAnim
             </span>
           </div>
           <div className="text-xs text-orange-600">
-            +10% recargo bancario
+            +{transferFeePercentage}% recargo bancario
           </div>
         </div>
         

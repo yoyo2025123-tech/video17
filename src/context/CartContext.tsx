@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { Toast } from '../components/Toast';
-import { useAdmin, AdminContext } from './AdminContext';
+import { AdminContext } from './AdminContext';
 import type { CartItem } from '../types/movie';
 
 interface SeriesCartItem extends CartItem {
@@ -97,15 +97,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     isVisible: boolean;
   }>({ message: '', type: 'success', isVisible: false });
 
-  // Limpiar carrito al cargar la página (detectar refresh)
+  // Clear cart on page refresh
   useEffect(() => {
     const handleBeforeUnload = () => {
-      // Marcar que la página se está recargando
       sessionStorage.setItem('pageRefreshed', 'true');
     };
 
     const handleLoad = () => {
-      // Si se detecta que la página fue recargada, limpiar el carrito
       if (sessionStorage.getItem('pageRefreshed') === 'true') {
         localStorage.removeItem('movieCart');
         dispatch({ type: 'CLEAR_CART' });
@@ -116,7 +114,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener('beforeunload', handleBeforeUnload);
     window.addEventListener('load', handleLoad);
 
-    // Verificar al montar el componente
     if (sessionStorage.getItem('pageRefreshed') === 'true') {
       localStorage.removeItem('movieCart');
       dispatch({ type: 'CLEAR_CART' });
@@ -130,7 +127,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // Solo cargar el carrito si no se detectó un refresh
     if (sessionStorage.getItem('pageRefreshed') !== 'true') {
       const savedCart = localStorage.getItem('movieCart');
       if (savedCart) {
@@ -149,7 +145,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [state.items]);
 
   const addItem = (item: SeriesCartItem) => {
-    const price = calculateItemPrice(item);
     const itemWithDefaults = { 
       ...item, 
       paymentType: 'cash' as const,
@@ -157,7 +152,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     };
     dispatch({ type: 'ADD_ITEM', payload: itemWithDefaults });
     
-    // Mostrar notificación
     setToast({
       message: `"${item.title}" agregado al carrito`,
       type: 'success',
@@ -169,7 +163,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const item = state.items.find(item => item.id === id);
     dispatch({ type: 'REMOVE_ITEM', payload: id });
     
-    // Mostrar notificación
     if (item) {
       setToast({
         message: `"${item.title}" retirado del carrito`,
@@ -206,11 +199,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const calculateItemPrice = (item: SeriesCartItem): number => {
-    const isAnime = item.original_language === 'ja' || 
-                   (item.genre_ids && item.genre_ids.includes(16)) ||
-                   item.title?.toLowerCase().includes('anime');
-    
-    // Get prices from admin context if available
+    // Get current prices from admin context with real-time updates
     const moviePrice = adminContext?.state?.prices?.moviePrice || 80;
     const seriesPrice = adminContext?.state?.prices?.seriesPrice || 300;
     const transferFeePercentage = adminContext?.state?.prices?.transferFeePercentage || 10;
@@ -219,7 +208,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const basePrice = moviePrice;
       return item.paymentType === 'transfer' ? Math.round(basePrice * (1 + transferFeePercentage / 100)) : basePrice;
     } else {
-      // Series: precio dinámico por temporada
       const seasons = item.selectedSeasons?.length || 1;
       const basePrice = seasons * seriesPrice;
       return item.paymentType === 'transfer' ? Math.round(basePrice * (1 + transferFeePercentage / 100)) : basePrice;
@@ -251,6 +239,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const closeToast = () => {
     setToast(prev => ({ ...prev, isVisible: false }));
   };
+
   return (
     <CartContext.Provider value={{ 
       state, 
